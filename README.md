@@ -13,7 +13,7 @@ Built with [Ultralytics YOLO11](https://docs.ultralytics.com/), fine-tuned on pu
 
 ## Why this project
 
-This is a portfolio prototype targeting the problem space addressed by [Hazen.ai](https://hazen.ai/). The goal is to demonstrate end-to-end ownership of a real CV pipeline — data sourcing, model fine-tuning, evaluation, and deployment — not to ship a production system.
+The goal is to demonstrate end-to-end ownership of a real CV pipeline — data sourcing, model fine-tuning, evaluation, and deployment — not to ship a production system.
 
 ## Tech stack
 
