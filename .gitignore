@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Datasets (too large — downloaded fresh from Roboflow per machine)
+data/seatbelt/
+data/phone/
+data/combined/images/
+data/combined/labels/
+# but keep the dataset config:
+!data/combined/data.yaml
+
+# Training outputs (large; share via GitHub Releases instead)
+runs/
+weights/*.pt
+weights/*.onnx
+# Keep weights folder visible in git:
+!weights/.gitkeep
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Flask uploads
+app/static/uploads/
+app/static/outputs/
+
+# Roboflow API key (if you put it in an env file)
+.env
+*.env

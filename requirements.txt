@@ -1,0 +1,26 @@
+# Core ML / CV
+ultralytics>=8.3.0          # Includes YOLO11; pulls torch as a dep
+opencv-python>=4.9.0
+numpy>=1.26.0
+Pillow>=10.0.0
+
+# Data
+roboflow>=1.1.30            # Dataset download from Roboflow Universe
+PyYAML>=6.0
+
+# Web demo
+Flask>=3.0.0
+
+# Notebooks / EDA
+jupyterlab>=4.0.0
+matplotlib>=3.8.0
+pandas>=2.1.0
+
+# Sample video download (optional, for testing)
+yt-dlp>=2024.4.9
+
+# Note on PyTorch:
+# - CPU machines: `pip install -r requirements.txt` is enough (ultralytics pulls CPU torch).
+# - GPU machines: BEFORE this file, run:
+#     pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+#   That installs the CUDA build of torch; ultralytics will then see it and not override.
