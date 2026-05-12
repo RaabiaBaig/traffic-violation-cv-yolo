@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Traffic Violation Detection</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, -apple-system, sans-serif; }
+    body { max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+    h1 { margin-bottom: 0.25rem; }
+    p.lede { color: #555; margin-top: 0; }
+    form { border: 1px solid #ddd; padding: 1.25rem; border-radius: 8px; background: #fafafa; }
+    label { display: block; margin: 0.75rem 0 0.25rem; font-weight: 600; }
+    input[type=file], input[type=number] { padding: 0.4rem; width: 100%; box-sizing: border-box; }
+    button { margin-top: 1rem; padding: 0.6rem 1.2rem; font-size: 1rem; background: #1a1a1a;
+             color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #333; }
+    .result { margin-top: 2rem; }
+    .result video, .result img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+    .stats { font-family: ui-monospace, monospace; font-size: 0.9rem;
+             background: #f0f0f0; padding: 0.75rem; border-radius: 4px; white-space: pre-wrap; }
+    footer { color: #888; font-size: 0.85rem; margin-top: 3rem; }
+  </style>
+</head>
+<body>
+  <h1>Traffic Violation Detection</h1>
+  <p class="lede">YOLO11, fine-tuned to spot seatbelt non-compliance and phone use in dashcam footage.</p>
+
+  <form action="/predict" method="post" enctype="multipart/form-data">
+    <label for="clip">Upload a video or image</label>
+    <input type="file" id="clip" name="clip" accept="video/*,image/*" required />
+
+    <label for="conf">Confidence threshold (0.05 – 0.95)</label>
+    <input type="number" id="conf" name="conf" min="0.05" max="0.95" step="0.05" value="0.25" />
+
+    <button type="submit">Detect violations</button>
+  </form>
+
+  {% if result_url %}
+  <div class="result">
+    <h2>Result</h2>
+    {% if is_video %}
+      <video src="{{ result_url }}" controls autoplay muted loop></video>
+    {% else %}
+      <img src="{{ result_url }}" alt="annotated output" />
+    {% endif %}
+    {% if stats %}
+      <h3>Detection summary</h3>
+      <div class="stats">{{ stats }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <footer>Trained on public Roboflow datasets. Daytime footage only. Prototype, not production.</footer>
+</body>
+</html>
