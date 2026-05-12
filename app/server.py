@@ -1,10 +1,12 @@
 """Flask demo: upload a dashcam clip, get back an annotated video.
 
+Two models combined:
+  - weights/best.pt: fine-tuned for seatbelt / no-seatbelt
+  - yolo11n.pt:      pretrained, used only for class 67 ("cell phone")
+
 Run:
     python app/server.py
 Then open http://localhost:5000 in your browser.
-
-Place a trained model at weights/best.pt before starting the server.
 """
 
 from __future__ import annotations
@@ -21,7 +23,10 @@ from werkzeug.utils import secure_filename  # noqa: E402
 
 from src.infer import annotate_image, annotate_video, IMAGE_EXTS, VIDEO_EXTS  # noqa: E402
 from ultralytics import YOLO  # noqa: E402
-WEIGHTS = PROJECT_ROOT / "weights" / "best.pt"
+
+
+SEATBELT_WEIGHTS = PROJECT_ROOT / "weights" / "best.pt"
+PHONE_WEIGHTS = PROJECT_ROOT / "yolo11n.pt"  # auto-downloaded on first YOLO() load
 UPLOAD_DIR = PROJECT_ROOT / "app" / "static" / "uploads"
 OUTPUT_DIR = PROJECT_ROOT / "app" / "static" / "outputs"
 ALLOWED_EXTS = VIDEO_EXTS | IMAGE_EXTS
@@ -33,15 +38,17 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
-# Load the model once at startup so each request is fast.
-if not WEIGHTS.exists():
+# Load both models once at startup.
+if not SEATBELT_WEIGHTS.exists():
     raise FileNotFoundError(
-        f"Trained weights not found at {WEIGHTS}. "
-        f"Pull them with: gh release download --pattern 'best.pt' -D weights/"
+        f"Seatbelt weights not found at {SEATBELT_WEIGHTS}. "
+        f"Pull them: gh release download --pattern 'best.pt' -D weights/"
     )
-print(f"Loading model from {WEIGHTS} ...")
-model = YOLO(str(WEIGHTS))
-print(f"Model classes: {model.names}")
+print(f"Loading seatbelt model from {SEATBELT_WEIGHTS} ...")
+seatbelt_model = YOLO(str(SEATBELT_WEIGHTS))
+print(f"  seatbelt classes: {seatbelt_model.names}")
+print(f"Loading pretrained phone model ({PHONE_WEIGHTS.name}) ...")
+phone_model = YOLO(str(PHONE_WEIGHTS))  # downloads from Ultralytics if missing
 
 
 @app.route("/", methods=["GET"])
@@ -68,9 +75,9 @@ def predict():
     conf = float(request.form.get("conf", "0.25"))
 
     if ext in VIDEO_EXTS:
-        stats = annotate_video(model, upload_path, output_path, conf)
+        stats = annotate_video(seatbelt_model, phone_model, upload_path, output_path, conf)
     else:
-        stats = annotate_image(model, upload_path, output_path, conf)
+        stats = annotate_image(seatbelt_model, phone_model, upload_path, output_path, conf)
 
     return render_template(
         "index.html",

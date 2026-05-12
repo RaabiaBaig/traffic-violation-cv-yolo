@@ -1,13 +1,14 @@
-"""Merge two Roboflow YOLO datasets (seatbelt + phone) into one combined dataset.
+"""Stage the Roboflow seatbelt dataset into data/combined/ for YOLO training.
 
-Workflow:
-  1. Download each dataset from Roboflow as YOLOv11 format (or YOLOv8 — same layout).
-  2. Extract zips into data/seatbelt/ and data/phone/.
-  3. Edit CLASS_MAP below to match the actual class names in each source data.yaml.
-  4. Run:  python src/merge_datasets.py
-  5. The merged dataset lands in data/combined/ with a fresh data.yaml.
+Why this is "seatbelt only" despite the project being about two violations:
+  Phone-use detection is handled by a pretrained YOLO11 model (COCO class 67 = "cell phone")
+  at inference time, not by fine-tuning. The Roboflow phone-use dataset we tried turned out
+  to be classification-only (only 6 real bboxes for our target classes). Pretrained YOLO11
+  already detects phones reliably in dashcam scenes, so we skip the fine-tune for that.
 
-Run with --dry-run to see what would happen without writing anything.
+Usage:
+    python src/merge_datasets.py --dry-run
+    python src/merge_datasets.py
 """
 
 from __future__ import annotations
@@ -18,33 +19,20 @@ from pathlib import Path
 
 import yaml
 
-# Edit this once you've looked at each source data.yaml.
-# Maps "source dataset name" -> { "source class name": "unified class name" or None to drop }.
+# Source-class names from the seatbelt Roboflow data.yaml -> unified-class names.
+# None drops the source class entirely.
 CLASS_MAP: dict[str, dict[str, str | None]] = {
     "seatbelt": {
-        # Common Roboflow class names — adjust to match your downloaded data.yaml:
         "seatbelt": "seatbelt",
-        "with_seatbelt": "seatbelt",
-        "no_seatbelt": "no_seatbelt",
-        "without_seatbelt": "no_seatbelt",
         "no-seatbelt": "no_seatbelt",
-    },
-    "phone": {
-        "phone": "phone_use",
-        "mobile": "phone_use",
-        "using_phone": "phone_use",
-        "phone_use": "phone_use",
-        "no_phone": "no_phone_use",
-        "no-phone": "no_phone_use",
     },
 }
 
-UNIFIED_CLASSES = ["seatbelt", "no_seatbelt", "phone_use", "no_phone_use"]
+UNIFIED_CLASSES = ["seatbelt", "no_seatbelt"]
 SPLITS = ["train", "valid", "test"]
 
 
 def load_source_classes(source_root: Path) -> list[str]:
-    """Read class names from a Roboflow dataset's data.yaml."""
     yaml_path = source_root / "data.yaml"
     if not yaml_path.exists():
         raise FileNotFoundError(f"No data.yaml found at {yaml_path}")
@@ -56,7 +44,6 @@ def load_source_classes(source_root: Path) -> list[str]:
 
 
 def build_id_remap(source_classes: list[str], source_name: str) -> dict[int, int]:
-    """Map source-class index -> unified-class index. Raises on unmapped classes."""
     mapping = CLASS_MAP[source_name]
     remap: dict[int, int] = {}
     for src_id, src_name in enumerate(source_classes):
@@ -67,7 +54,7 @@ def build_id_remap(source_classes: list[str], source_name: str) -> dict[int, int
             )
         target = mapping[src_name]
         if target is None:
-            continue  # explicitly drop this class
+            continue
         if target not in UNIFIED_CLASSES:
             raise ValueError(f"Target '{target}' is not in UNIFIED_CLASSES")
         remap[src_id] = UNIFIED_CLASSES.index(target)
@@ -82,7 +69,6 @@ def merge_split(
     out_root: Path,
     dry_run: bool,
 ) -> tuple[int, int]:
-    """Copy images and rewrite labels for one split. Returns (images, labels) counts."""
     src_images = source_root / split / "images"
     src_labels = source_root / split / "labels"
     if not src_images.exists():
@@ -98,7 +84,6 @@ def merge_split(
     for img_path in src_images.iterdir():
         if img_path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".bmp"}:
             continue
-        # Prefix filename to avoid collisions between source datasets.
         new_name = f"{source_name}_{img_path.name}"
         if not dry_run:
             shutil.copy2(img_path, out_images / new_name)
@@ -114,7 +99,7 @@ def merge_split(
                 continue
             src_cls = int(parts[0])
             if src_cls not in remap:
-                continue  # class was dropped in the map
+                continue
             new_cls = remap[src_cls]
             new_lines.append(" ".join([str(new_cls), *parts[1:]]))
         if new_lines:
@@ -126,7 +111,6 @@ def merge_split(
 
 
 def write_combined_yaml(out_root: Path) -> None:
-    """Write data.yaml for the merged dataset (paths relative to out_root)."""
     yaml_content = {
         "path": str(out_root.resolve()).replace("\\", "/"),
         "train": "train/images",
@@ -141,12 +125,11 @@ def write_combined_yaml(out_root: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seatbelt", type=Path, default=Path("data/seatbelt"))
-    parser.add_argument("--phone", type=Path, default=Path("data/phone"))
     parser.add_argument("--out", type=Path, default=Path("data/combined"))
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    sources = {"seatbelt": args.seatbelt, "phone": args.phone}
+    sources = {"seatbelt": args.seatbelt}
 
     for name, root in sources.items():
         if not root.exists():

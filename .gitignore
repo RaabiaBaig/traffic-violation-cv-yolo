@@ -22,6 +22,9 @@ data/combined/labels/
 runs/
 weights/*.pt
 weights/*.onnx
+# Pretrained checkpoints auto-downloaded by Ultralytics into project root
+yolo11*.pt
+yolov8*.pt
 # Keep weights folder visible in git:
 !weights/.gitkeep
 
